@@ -18,6 +18,8 @@ from django.urls import include
 from django.contrib import admin
 from django.urls import path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,3 +28,5 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(), name='redoc')
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
