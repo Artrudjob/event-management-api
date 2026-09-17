@@ -1,13 +1,40 @@
 from rest_framework import serializers
 from events.models import Venue, Event, EventImage
+from weather.models import Weather
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
+class WeatherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Weather
+        fields = [
+            "temperature_in_c",
+            "humidity",
+            "pressure",
+            "wind_direction",
+            "wind_speed",
+        ]
+
 class VenueSerializer(serializers.ModelSerializer):
+    weather = serializers.SerializerMethodField()
+
     class Meta:
         model = Venue
-        fields = ["id", "name", "latitude", "longitude"]
+        fields = ["id", "name", "latitude", "longitude", "weather"]
+
+    def get_weather(self, obj):
+        prefetched = getattr(obj, "latest_weather_prefetched", None)
+
+        if prefetched is not None:
+            last_weather = prefetched[0] if prefetched else None
+        else:
+            last_weather = obj.weathers.order_by("-create_time").first()
+
+        if last_weather:
+            return WeatherSerializer(last_weather).data
+
+        return None
 
 class EventImageSerializer(serializers.ModelSerializer):
     class Meta:
