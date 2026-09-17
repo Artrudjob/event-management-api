@@ -6,6 +6,7 @@ from django.db import models
 from decimal import Decimal
 from PIL import Image
 from django.core.files.base import ContentFile
+from django.core.exceptions import ValidationError
 
 class Venue(models.Model):
     """Место проведения мероприятия"""
@@ -37,26 +38,10 @@ class Event(models.Model):
         PUBLISHED = "published", "Опубликовано"
 
     name = models.CharField(max_length=255, verbose_name="Название")
-    description = models.TextField(
-        blank=True,
-        default="",
-        verbose_name="Описание"
-    )
-    publication_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Дата и время публикации"
-    )
-    starts_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Дата и время начала проведения"
-    )
-    ends_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Дата и время завершения проведения"
-    )
+    description = models.TextField(default="", verbose_name="Описание")
+    publication_at = models.DateTimeField(verbose_name="Дата и время публикации")
+    starts_at = models.DateTimeField(verbose_name="Дата и время начала проведения")
+    ends_at = models.DateTimeField(verbose_name="Дата и время завершения проведения")
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -70,8 +55,6 @@ class Event(models.Model):
         verbose_name="Место проведения"
     )
     rating = models.IntegerField(
-        blank=True,
-        null=True,
         validators=[MinValueValidator(0), MaxValueValidator(25)],
         verbose_name="Рейтинг"
     )
@@ -86,6 +69,20 @@ class Event(models.Model):
 
     def __str__(self):
         return self.name
+
+    def check_date_interval(self):
+        if (
+            self.starts_at
+            and self.ends_at
+            and self.starts_at >= self.ends_at
+        ):
+            raise ValidationError({
+                "starts_at": "Дата и время начала проведения не может начинаться позже даты и времени окончания."
+            })
+
+    def clean(self):
+        super().clean()
+        self.check_date_interval()
 
 class EventImage(models.Model):
     """Изображение мероприятия"""

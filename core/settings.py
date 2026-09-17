@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'events',
     'rest_framework',
     'drf_spectacular',
+    'django_filters'
 ]
 
 REST_FRAMEWORK = {
