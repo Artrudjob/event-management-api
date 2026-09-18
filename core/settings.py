@@ -142,4 +142,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "weather.tasks.fetch_weather_for_all_venues",
         "schedule": crontab(minute=0),
     },
+    "publish-draft-events": {
+        "task": "events.tasks.publish_draft_events",
+        "schedule": crontab(minute="*"),
+    },
 }

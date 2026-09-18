@@ -100,10 +100,10 @@ class EventSerializer(serializers.ModelSerializer):
         if publication_at is None:
             publication_at = instance.publication_at
 
-        if publication_at < timezone.now():
-            validated_data["status"] = Event.Status.DRAFT
-        else:
+        if publication_at <= timezone.now():
             validated_data["status"] = Event.Status.PUBLISHED
+        else:
+            validated_data["status"] = Event.Status.DRAFT
 
     def prepare_save_data(self, validated_data, instance=None):
         uploaded_images = validated_data.pop("uploaded_images", [])
