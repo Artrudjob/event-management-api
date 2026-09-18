@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os.path
 
 from pathlib import Path
+from celery.schedules import crontab
 from environ import environ
 
 env = environ.Env(DEBUG=(bool, False))
@@ -136,4 +137,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    "fetch-weather-hourly": {
+        "task": "weather.tasks.fetch_weather_for_all_venues",
+        "schedule": crontab(minute=0),
+    },
+}

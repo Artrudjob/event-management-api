@@ -19,7 +19,7 @@ class WeatherService:
     def fetch_for_all_venues(self) -> list[Weather]:
         created = []
 
-        for venue in Venue.objects.all():
+        for venue in Venue.objects.all().iterator(chunk_size=100):
             try:
                 created.append(self.fetch_for_venue(venue))
             except Exception:

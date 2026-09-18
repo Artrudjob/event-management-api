@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import OuterRef, Prefetch, Subquery
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -8,6 +9,7 @@ from events.filters import EventFilter
 from events.models import Venue, Event
 from events.serializers import VenueSerializer, EventSerializer
 from weather.models import Weather
+from weather.tasks import fetch_weather_for_venue
 
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
@@ -32,6 +34,10 @@ class VenueViewSet(viewsets.ModelViewSet):
     queryset = Venue.objects.order_by("-id")
     serializer_class = VenueSerializer
     permission_classes = [IsSuperUser]
+
+    def perform_create(self, serializer):
+        venue = serializer.save()
+        transaction.on_commit(lambda: fetch_weather_for_venue.delay(venue.pk))
 
 class EventPagination(PageNumberPagination):
     page_size = 25
