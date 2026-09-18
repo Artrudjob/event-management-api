@@ -8,6 +8,7 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from events.filters import EventFilter
 from events.models import Venue, Event
 from events.serializers import VenueSerializer, EventSerializer
+from events.tasks import send_notification
 from weather.models import Weather
 from weather.tasks import fetch_weather_for_venue
 
@@ -76,4 +77,17 @@ class EventViewSet(viewsets.ModelViewSet):
         return queryset.filter(status = Event.Status.PUBLISHED)
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        event = serializer.save(author=self.request.user)
+        self._queue_publication_notification(event)
+
+    def perform_update(self, serializer):
+        previous_status = serializer.instance.status
+        event = serializer.save()
+        if previous_status != Event.Status.PUBLISHED:
+            self._queue_publication_notification(event)
+
+    def _queue_publication_notification(self, event: Event):
+        if event.status != Event.Status.PUBLISHED:
+            return
+
+        transaction.on_commit(lambda: send_notification.delay(event.pk))

@@ -132,6 +132,10 @@ MAILERS = {
     },
 }
 
+EVENT_NOTIFICATION_RECIPIENTS = env.list("EVENT_NOTIFICATION_RECIPIENTS", default=[])
+EVENT_NOTIFICATION_SUBJECT = env("EVENT_NOTIFICATION_SUBJECT", default="Опубликовано мероприятие")
+EVENT_NOTIFICATION_TEXT = env("EVENT_NOTIFICATION_TEXT", default="Появилось опубликованное мероприятие")
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
