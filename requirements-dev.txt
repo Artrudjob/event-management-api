@@ -1,0 +1,6 @@
+-r requirements.txt
+django-stubs==6.1.1
+django-stubs-ext==6.1.1
+djangorestframework-stubs==3.18.1
+types-PyYAML==6.0.12.20260906
+celery-types==0.26.0
