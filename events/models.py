@@ -11,7 +11,11 @@ from django.core.exceptions import ValidationError
 class Venue(models.Model):
     """Место проведения мероприятия"""
 
-    name = models.CharField(max_length=255, verbose_name="Название места")
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name="Название места"
+    )
     latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,

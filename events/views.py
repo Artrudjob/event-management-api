@@ -1,13 +1,17 @@
 from django.db import transaction
 from django.db.models import OuterRef, Prefetch, Subquery
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.response import Response
 from events.filters import EventFilter
 from events.models import Venue, Event
-from events.serializers import VenueSerializer, EventSerializer
+from events.serializers import EventImportFileSerializer, EventSerializer, VenueSerializer
+from events.services.event_import_service import EventImportService, EventXlsxParseError
 from events.tasks import send_notification
 from weather.models import Weather
 from weather.tasks import fetch_weather_for_venue
@@ -91,3 +95,27 @@ class EventViewSet(viewsets.ModelViewSet):
             return
 
         transaction.on_commit(lambda: send_notification.delay(event.pk))
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="import",
+        parser_classes=[MultiPartParser, FormParser],
+        serializer_class=EventImportFileSerializer,
+    )
+    def import_events(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            result = EventImportService().import_xlsx(serializer.validated_data["file"], author=request.user)
+        except EventXlsxParseError as exc:
+            return Response({"detail": exc.message}, status=status.HTTP_400_BAD_REQUEST)
+
+        if result["errors"]:
+            return Response({"errors": result["errors"]}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"created": len(result["rows"])},
+            status=status.HTTP_201_CREATED,
+        )
