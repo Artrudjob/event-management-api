@@ -74,7 +74,7 @@ class Event(models.Model):
     def __str__(self):
         return self.name
 
-    def check_date_interval(self):
+    def _check_date_interval(self):
         if (
             self.starts_at
             and self.ends_at
@@ -86,7 +86,7 @@ class Event(models.Model):
 
     def clean(self):
         super().clean()
-        self.check_date_interval()
+        self._check_date_interval()
 
 class EventImage(models.Model):
     """Изображение мероприятия"""
@@ -114,14 +114,14 @@ class EventImage(models.Model):
             original = EventImage.objects.get(pk=self.pk)
 
             if original.image != self.image:
-                self.make_preview()
+                self._make_preview()
         else:
             if self.image and not self.preview:
-                self.make_preview()
+                self._make_preview()
 
         super().save(*args, **kwargs)
 
-    def make_preview(self):
+    def _make_preview(self):
         with Image.open(self.image) as image:
             width, height = image.size
             target_size = 200

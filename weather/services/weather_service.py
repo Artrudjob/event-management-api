@@ -1,6 +1,5 @@
 import logging
 from dataclasses import asdict
-
 from events.models import Venue
 from weather.models import Weather
 from weather.providers import MockWeatherProvider, WeatherProvider
@@ -8,6 +7,8 @@ from weather.providers import MockWeatherProvider, WeatherProvider
 logger = logging.getLogger(__name__)
 
 class WeatherService:
+    CHUNK_SIZE = 100
+
     def __init__(self, provider: WeatherProvider | None = None):
         self.provider = provider or MockWeatherProvider()
 
@@ -19,7 +20,7 @@ class WeatherService:
     def fetch_for_all_venues(self) -> list[Weather]:
         created = []
 
-        for venue in Venue.objects.all().iterator(chunk_size=100):
+        for venue in Venue.objects.all().iterator(chunk_size=self.CHUNK_SIZE):
             try:
                 created.append(self.fetch_for_venue(venue))
             except Exception:

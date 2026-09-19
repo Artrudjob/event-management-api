@@ -27,7 +27,7 @@ class EventImportService:
     }
 
     def import_xlsx(self, file, author) -> dict:
-        result = self.validate_xlsx(file)
+        result = self._validate_xlsx(file)
         if result["errors"]:
             return result
 
@@ -64,7 +64,7 @@ class EventImportService:
             if workbook is not None:
                 workbook.close()
 
-    def validate_xlsx(self, file) -> dict:
+    def _validate_xlsx(self, file) -> dict:
         parsed_rows = self._parse_xlsx(file)
         rows = []
         errors = []
