@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework import serializers
-from events.constants import ImportXlsxFieldConstants
+from events.constants import XlsxFieldConstants
 from events.models import Event, Venue
 
 class EventImportFileSerializer(serializers.Serializer):
@@ -31,15 +31,15 @@ class EventImportSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        data[ImportXlsxFieldConstants.STATUS] = self._set_event_status(data[ImportXlsxFieldConstants.PUBLICATION_AT])
+        data[XlsxFieldConstants.STATUS] = self._set_event_status(data[XlsxFieldConstants.PUBLICATION_AT])
 
         return data
 
     def _get_venue_errors(self, data: dict) -> dict:
         venue = Venue(
-            name=data[ImportXlsxFieldConstants.VENUE_NAME],
-            latitude=data[ImportXlsxFieldConstants.LATITUDE],
-            longitude=data[ImportXlsxFieldConstants.LONGITUDE],
+            name=data[XlsxFieldConstants.VENUE_NAME],
+            latitude=data[XlsxFieldConstants.LATITUDE],
+            longitude=data[XlsxFieldConstants.LONGITUDE],
         )
         try:
             venue.full_clean()
@@ -51,12 +51,12 @@ class EventImportSerializer(serializers.Serializer):
 
     def _get_event_errors(self, data: dict) -> dict:
         event = Event(
-            name=data[ImportXlsxFieldConstants.NAME],
-            description=data.get(ImportXlsxFieldConstants.DESCRIPTION, ""),
-            publication_at=data[ImportXlsxFieldConstants.PUBLICATION_AT],
-            starts_at=data[ImportXlsxFieldConstants.STARTS_AT],
-            ends_at=data[ImportXlsxFieldConstants.ENDS_AT],
-            rating=data[ImportXlsxFieldConstants.RATING],
+            name=data[XlsxFieldConstants.NAME],
+            description=data.get(XlsxFieldConstants.DESCRIPTION, ""),
+            publication_at=data[XlsxFieldConstants.PUBLICATION_AT],
+            starts_at=data[XlsxFieldConstants.STARTS_AT],
+            ends_at=data[XlsxFieldConstants.ENDS_AT],
+            rating=data[XlsxFieldConstants.RATING],
         )
         try:
             event.clean()
@@ -66,7 +66,7 @@ class EventImportSerializer(serializers.Serializer):
         return {}
 
     def _transform_venue_errors(self, exc: ValidationError) -> dict:
-        field_map = {"name": ImportXlsxFieldConstants.VENUE_NAME}
+        field_map = {"name": XlsxFieldConstants.VENUE_NAME}
         if not hasattr(exc, "message_dict"):
             return {"venue_non_field_errors": exc.messages}
 

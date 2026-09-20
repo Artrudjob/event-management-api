@@ -2,7 +2,7 @@ from zipfile import BadZipFile
 from django.db import transaction
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
-from events.constants import ImportXlsxFieldConstants
+from events.constants import XLSX_HEADERS, XlsxFieldConstants
 from events.models import Event, Venue
 from events.serializers import EventImportSerializer
 from weather.tasks import fetch_weather_for_venue
@@ -14,18 +14,6 @@ class EventXlsxParseError(Exception):
         self.message = message
 
 class EventImportService:
-    HEADERS_MAP = {
-        "название": ImportXlsxFieldConstants.NAME,
-        "описание": ImportXlsxFieldConstants.DESCRIPTION,
-        "дата и время публикации": ImportXlsxFieldConstants.PUBLICATION_AT,
-        "дата и время начала проведения": ImportXlsxFieldConstants.STARTS_AT,
-        "дата и время завершения проведения": ImportXlsxFieldConstants.ENDS_AT,
-        "название места проведения": ImportXlsxFieldConstants.VENUE_NAME,
-        "широта": ImportXlsxFieldConstants.LATITUDE,
-        "долгота": ImportXlsxFieldConstants.LONGITUDE,
-        "рейтинг": ImportXlsxFieldConstants.RATING,
-    }
-
     def import_xlsx(self, file, author) -> dict:
         result = self._validate_xlsx(file)
         if result["errors"]:
@@ -89,13 +77,13 @@ class EventImportService:
                 venue = self._upsert_venue(row)
                 venue_ids.add(venue.pk)
                 Event.objects.create(
-                    name=row[ImportXlsxFieldConstants.NAME],
-                    description=row[ImportXlsxFieldConstants.DESCRIPTION] or "",
-                    publication_at=row[ImportXlsxFieldConstants.PUBLICATION_AT],
-                    starts_at=row[ImportXlsxFieldConstants.STARTS_AT],
-                    ends_at=row[ImportXlsxFieldConstants.ENDS_AT],
-                    rating=row[ImportXlsxFieldConstants.RATING],
-                    status=row[ImportXlsxFieldConstants.STATUS],
+                    name=row[XlsxFieldConstants.NAME],
+                    description=row[XlsxFieldConstants.DESCRIPTION] or "",
+                    publication_at=row[XlsxFieldConstants.PUBLICATION_AT],
+                    starts_at=row[XlsxFieldConstants.STARTS_AT],
+                    ends_at=row[XlsxFieldConstants.ENDS_AT],
+                    rating=row[XlsxFieldConstants.RATING],
+                    status=row[XlsxFieldConstants.STATUS],
                     venue=venue,
                     author=author,
                 )
@@ -106,17 +94,17 @@ class EventImportService:
 
     def _upsert_venue(self, row: dict) -> Venue:
         venue, created = Venue.objects.get_or_create(
-            name=row[ImportXlsxFieldConstants.VENUE_NAME],
+            name=row[XlsxFieldConstants.VENUE_NAME],
             defaults={
-                "latitude": row[ImportXlsxFieldConstants.LATITUDE],
-                "longitude": row[ImportXlsxFieldConstants.LONGITUDE],
+                "latitude": row[XlsxFieldConstants.LATITUDE],
+                "longitude": row[XlsxFieldConstants.LONGITUDE],
             },
         )
         if created:
             return venue
 
-        venue.latitude = row[ImportXlsxFieldConstants.LATITUDE]
-        venue.longitude = row[ImportXlsxFieldConstants.LONGITUDE]
+        venue.latitude = row[XlsxFieldConstants.LATITUDE]
+        venue.longitude = row[XlsxFieldConstants.LONGITUDE]
         venue.save(update_fields=["latitude", "longitude", "update_time"])
 
         return venue
@@ -155,7 +143,7 @@ class EventImportService:
                 continue
 
             header_name = str(header).strip().lower()
-            field = self.HEADERS_MAP.get(header_name)
+            field = XLSX_HEADERS.get(header_name)
             if field is None:
                 continue
 
@@ -167,7 +155,7 @@ class EventImportService:
 
         missing = [
             header
-            for header, field in self.HEADERS_MAP.items()
+            for header, field in XLSX_HEADERS.items()
             if field not in seen_fields
         ]
         if missing:

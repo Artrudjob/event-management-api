@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import OuterRef, Prefetch, Subquery
+from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -11,6 +12,7 @@ from rest_framework.response import Response
 from events.filters import EventFilter
 from events.models import Venue, Event
 from events.serializers import EventImportFileSerializer, EventSerializer, VenueSerializer
+from events.services.event_export_service import EventExportService
 from events.services.event_import_service import EventImportService, EventXlsxParseError
 from events.tasks import send_notification
 from weather.models import Weather
@@ -73,12 +75,15 @@ class EventViewSet(viewsets.ModelViewSet):
                 to_attr="latest_weather_prefetched",
             ),
         )
+        return self._visible_events(queryset)
+
+    def _visible_events(self, queryset):
         user = self.request.user
 
         if user.is_authenticated and user.is_superuser:
             return queryset
 
-        return queryset.filter(status = Event.Status.PUBLISHED)
+        return queryset.filter(status=Event.Status.PUBLISHED)
 
     def perform_create(self, serializer):
         event = serializer.save(author=self.request.user)
@@ -118,4 +123,23 @@ class EventViewSet(viewsets.ModelViewSet):
         return Response(
             {"created": len(result["rows"])},
             status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="export",
+        pagination_class=None,
+    )
+    def export_events(self, request):
+        queryset = self.filter_queryset(
+            self._visible_events(Event.objects.select_related("venue").order_by("-id"))
+        )
+        stream = EventExportService().export_xlsx(queryset)
+
+        return FileResponse(
+            stream,
+            as_attachment=True,
+            filename="events.xlsx",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )

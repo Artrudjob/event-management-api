@@ -1,3 +1,3 @@
-from events.constants.import_xlsx_field_constants import ImportXlsxFieldConstants
+from events.constants.xlsx_field_constants import XLSX_HEADERS, XlsxFieldConstants
 
-__all__ = ["ImportXlsxFieldConstants"]
+__all__ = ["XLSX_HEADERS", "XlsxFieldConstants"]
