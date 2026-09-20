@@ -36,18 +36,20 @@ class EventImportSerializer(serializers.Serializer):
         return data
 
     def _get_venue_errors(self, data: dict) -> dict:
-        venue = Venue(
-            name=data[XlsxFieldConstants.VENUE_NAME],
-            latitude=data[XlsxFieldConstants.LATITUDE],
-            longitude=data[XlsxFieldConstants.LONGITUDE],
-        )
+        venue = Venue.objects.filter(name=data[XlsxFieldConstants.VENUE_NAME]).first()
+
+        if venue is None:
+            venue = Venue(name=data[XlsxFieldConstants.VENUE_NAME])
+
+        venue.latitude = data[XlsxFieldConstants.LATITUDE]
+        venue.longitude = data[XlsxFieldConstants.LONGITUDE]
+
         try:
             venue.full_clean()
         except ValidationError as exc:
             return self._transform_venue_errors(exc)
 
         return {}
-
 
     def _get_event_errors(self, data: dict) -> dict:
         event = Event(
