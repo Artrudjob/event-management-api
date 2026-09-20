@@ -3,12 +3,10 @@ from django.urls import reverse
 from rest_framework import status
 from events.models import Event
 
-
 def _list_results(response):
     if isinstance(response.data, dict) and "results" in response.data:
         return response.data["results"]
     return response.data
-
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -63,7 +61,6 @@ class TestEventReadPermissions:
         else:
             assert response.status_code == status.HTTP_404_NOT_FOUND
 
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "client_name",
@@ -81,7 +78,6 @@ class TestEventPublishedReadPermissions:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == published_event.pk
-
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
@@ -159,3 +155,48 @@ class TestEventWritePermissions:
         else:
             assert response.status_code == status.HTTP_403_FORBIDDEN
             assert Event.objects.filter(pk=published_event.pk).exists()
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "client_name,is_permitted",
+    [
+        ("superuser_client", True),
+        ("user_client", False),
+    ],
+    ids=["superuser", "user"],
+)
+class TestEventExportPermissions:
+    """Ожидается, что экспорт мероприятий доступен только суперпользователю."""
+
+    def test_export(self, request, client_name, is_permitted, published_event):
+        client = request.getfixturevalue(client_name)
+        response = client.get(reverse("event-export-events"))
+
+        if is_permitted:
+            assert response.status_code == status.HTTP_200_OK
+            assert (
+                response["Content-Type"]
+                == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            assert response.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.django_db
+class TestEventDateValidation:
+    """Ожидается, что нельзя создать мероприятие, если начало позже окончания."""
+
+    def test_reject_invalid_interval(
+        self,
+        superuser_client,
+        event_payload,
+    ):
+        event_payload["starts_at"] = event_payload["ends_at"]
+        response = superuser_client.post(
+            reverse("event-list"),
+            event_payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "starts_at" in response.data
+        assert not Event.objects.filter(name=event_payload["name"]).exists()
