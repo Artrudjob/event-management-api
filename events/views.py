@@ -7,10 +7,10 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 from events.filters import EventFilter
 from events.models import Venue, Event
+from events.permissions import IsSuperUser, IsSuperUserOrReadOnly
 from events.serializers import EventImportFileSerializer, EventSerializer, VenueSerializer
 from events.services.event_export_service import EventExportService
 from events.services.event_import_service import EventImportService, EventXlsxParseError
@@ -18,24 +18,6 @@ from events.tasks import send_notification
 from weather.models import Weather
 from weather.tasks import fetch_weather_for_venue
 
-class IsSuperUser(BasePermission):
-    def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_superuser
-        )
-
-class IsSuperUserOrReadOnly(BasePermission):
-    def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
-            return True
-
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_superuser
-        )
 
 class VenueViewSet(viewsets.ModelViewSet):
     queryset = Venue.objects.order_by("-id")
@@ -105,6 +87,7 @@ class EventViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["post"],
         url_path="import",
+        permission_classes=[IsSuperUser],
         parser_classes=[MultiPartParser, FormParser],
         serializer_class=EventImportFileSerializer,
     )
@@ -129,6 +112,7 @@ class EventViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         url_path="export",
+        permission_classes=[IsSuperUser],
         pagination_class=None,
     )
     def export_events(self, request):
