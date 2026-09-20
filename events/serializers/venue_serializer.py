@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from events.models import Venue
@@ -11,6 +12,7 @@ class VenueSerializer(serializers.ModelSerializer):
         model = Venue
         fields = ["id", "name", "latitude", "longitude", "weather"]
 
+    @extend_schema_field(WeatherSerializer(allow_null=True))
     def get_weather(self, obj):
         prefetched = getattr(obj, "latest_weather_prefetched", None)
 

@@ -5,7 +5,7 @@ from events.constants import XlsxFieldConstants
 from events.models import Event, Venue
 
 class EventImportFileSerializer(serializers.Serializer):
-    file = serializers.FileField()
+    file = serializers.FileField(help_text="xlsx-файл с мероприятиями.")
 
 class EventImportSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)

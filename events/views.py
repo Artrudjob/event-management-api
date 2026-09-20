@@ -2,7 +2,9 @@ from django.db import transaction
 from django.db.models import OuterRef, Prefetch, Subquery
 from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status, viewsets
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
@@ -18,7 +20,18 @@ from events.tasks import send_notification
 from weather.models import Weather
 from weather.tasks import fetch_weather_for_venue
 
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+
+@extend_schema(tags=["venues"])
+@extend_schema_view(
+    list=extend_schema(summary="Получить список мест проведения мероприятий"),
+    retrieve=extend_schema(summary="Получить место проведения мероприятия"),
+    create=extend_schema(summary="Создать место проведения мероприятия"),
+    update=extend_schema(summary="Обновить место проведения мероприятия"),
+    partial_update=extend_schema(summary="Обновить (частично) место проведения мероприятия"),
+    destroy=extend_schema(summary="Удалить место проведения мероприятия"),
+)
 class VenueViewSet(viewsets.ModelViewSet):
     queryset = Venue.objects.order_by("-id")
     serializer_class = VenueSerializer
@@ -33,6 +46,15 @@ class EventPagination(PageNumberPagination):
     page_size_query_param = "page_size"
     max_page_size = 100
 
+@extend_schema(tags=["events"])
+@extend_schema_view(
+    list=extend_schema(summary="Получить список мероприятий"),
+    retrieve=extend_schema(summary="Получить мероприятие"),
+    create=extend_schema(summary="Создать мероприятие"),
+    update=extend_schema(summary="Обновить мероприятие"),
+    partial_update=extend_schema(summary="Обновить (частично) мероприятие"),
+    destroy=extend_schema(summary="Удалить мероприятие"),
+)
 class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsSuperUserOrReadOnly]
@@ -83,6 +105,24 @@ class EventViewSet(viewsets.ModelViewSet):
 
         transaction.on_commit(lambda: send_notification.delay(event.pk))
 
+    @extend_schema(
+        summary="Импорт мероприятий из файла .xlsx",
+        request=EventImportFileSerializer,
+        responses={
+            201: inline_serializer(
+                name="EventImportCreated",
+                fields={"created": serializers.IntegerField()},
+            ),
+            400: inline_serializer(
+                name="EventImportFailed",
+                fields={
+                    "detail": serializers.CharField(required=False),
+                    "errors": serializers.ListField(required=False),
+                },
+            ),
+            403: OpenApiResponse(description="Доступ только для суперпользователя"),
+        },
+    )
     @action(
         detail=False,
         methods=["post"],
@@ -108,6 +148,13 @@ class EventViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        summary="Экспорт мероприятий в файла .xlsx",
+        responses={
+            (200, XLSX_CONTENT_TYPE): OpenApiTypes.BINARY,
+            403: OpenApiResponse(description="Доступ только для суперпользователя"),
+        },
+    )
     @action(
         detail=False,
         methods=["get"],
@@ -125,5 +172,5 @@ class EventViewSet(viewsets.ModelViewSet):
             stream,
             as_attachment=True,
             filename="events.xlsx",
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            content_type=XLSX_CONTENT_TYPE,
         )
